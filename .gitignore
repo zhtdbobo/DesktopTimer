@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*$py.class
+*.so
+*.dll
+*.exe
+*.zip
+*.egg-info/
+dist/
+build/
+*.egg
+*.whl
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Windows
+Thumbs.db
+.DS_Store
+
+# PyInstaller
+dist/
+build/
+*.spec
