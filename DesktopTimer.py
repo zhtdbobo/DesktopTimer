@@ -29,6 +29,12 @@ class DesktopTimer:
         
         # 设置窗口背景色
         self.root.configure(bg='#2C3E50')
+
+        # 设置窗口图标（仅在 Windows 上生效）
+        try:
+            self.root.iconbitmap('icon.ico')  # 使用同目录下的 icon.ico
+        except Exception as e:
+            print(f"图标加载失败: {e}")
         
         # 模式状态
         self.mini_mode = False
