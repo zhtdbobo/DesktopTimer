@@ -12,3 +12,8 @@
 - 支持开始、暂停、继续和重置功能
 - 时间不足时会变色提醒（绿色→橙色→红色）
 - 适用于Windows系统的桌面时间管理工具
+
+## 界面
+<img width="302" height="228" alt="PixPin_2025-08-28_11-55-37" src="https://github.com/user-attachments/assets/9a96f78c-90ba-44c8-839a-66857581bfe6" />
+
+<img width="105" height="60" alt="PixPin_2025-08-28_11-54-05" src="https://github.com/user-attachments/assets/5b5b35e6-4e09-40cc-ab54-93889e312222" />
