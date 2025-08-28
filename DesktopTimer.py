@@ -1,0 +1,349 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import time
+from datetime import datetime, timedelta
+import threading
+import ctypes  # 用于调用 Windows API
+
+class DesktopTimer:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.setup_window()
+        self.setup_variables()
+        self.setup_ui()
+        self.setup_drag()
+        
+        # Center the window on startup
+        self.center_window()
+        
+        self.timer_thread = None
+        self.is_running = False
+        self.is_paused = False
+        
+    def setup_window(self):
+        """设置窗口属性"""
+        self.root.title("桌面计时器")
+        self.root.geometry("200x120")
+        self.root.attributes("-topmost", True)  # 保持在最顶层
+        self.root.resizable(False, False)
+        
+        # 设置窗口背景色
+        self.root.configure(bg='#2C3E50')
+        
+        # 模式状态
+        self.mini_mode = False
+        
+    def setup_variables(self):
+        """初始化变量"""
+        self.total_seconds = 0
+        self.remaining_seconds = 0
+        
+    def setup_ui(self):
+        """设置用户界面"""
+        # 主框架
+        main_frame = tk.Frame(self.root, bg='#2C3E50')
+        main_frame.pack(fill='both', expand=True, padx=5, pady=5)
+        
+        # 时间设置框架
+        self.time_frame = tk.Frame(main_frame, bg='#2C3E50')
+        self.time_frame.pack(fill='x', pady=2)
+        
+        # 小时滚轮
+        tk.Label(self.time_frame, text="时:", bg='#2C3E50', fg='white', font=('Arial', 8)).pack(side='left')
+        self.hours_var = tk.StringVar(value="0")
+        self.hours_spinbox = ttk.Spinbox(self.time_frame, from_=0, to=23, textvariable=self.hours_var, width=3, font=('Arial', 8), wrap=True, command=self.update_time_from_spinbox)
+        self.hours_spinbox.pack(side='left', padx=1, fill='x', expand=True)
+        
+        # 分钟滚轮
+        tk.Label(self.time_frame, text="分:", bg='#2C3E50', fg='white', font=('Arial', 8)).pack(side='left', padx=(5, 0))
+        self.minutes_var = tk.StringVar(value="5")
+        self.minutes_spinbox = ttk.Spinbox(self.time_frame, from_=0, to=59, textvariable=self.minutes_var, width=3, font=('Arial', 8), wrap=True, command=self.update_time_from_spinbox)
+        self.minutes_spinbox.pack(side='left', padx=1, fill='x', expand=True)
+        
+        # 秒钟滚轮
+        tk.Label(self.time_frame, text="秒:", bg='#2C3E50', fg='white', font=('Arial', 8)).pack(side='left', padx=(4, 0))
+        self.seconds_var = tk.StringVar(value="0")
+        self.seconds_spinbox = ttk.Spinbox(self.time_frame, from_=0, to=59, textvariable=self.seconds_var, width=3, font=('Arial', 8), wrap=True, command=self.update_time_from_spinbox)  
+        self.seconds_spinbox.pack(side='left', padx=1, fill='x', expand=True)
+        
+        # 显示时间标签
+        self.time_label = tk.Label(main_frame, text="00:05:00", 
+                                font=('Arial', 20, 'bold'), 
+                                bg='#2C3E50', fg='#27AE60')
+        self.time_label.pack(pady=5, fill='x', expand=True)
+        
+        # 按钮框架
+        self.button_frame = tk.Frame(main_frame, bg='#2C3E50')
+        self.button_frame.pack(fill='x', pady=2)
+        
+        # 控制按钮
+        self.start_btn = tk.Button(self.button_frame, text="开始", command=self.start_timer,
+                                bg='#27AE60', fg='white', font=('微软雅黑', 9))
+        self.start_btn.pack(side='left', padx=5, fill='x', expand=True)
+        
+        self.pause_btn = tk.Button(self.button_frame, text="暂停", command=self.pause_timer,
+                                bg='#F39C12', fg='white', font=('微软雅黑', 9))
+        self.pause_btn.pack(side='left', padx=5, fill='x', expand=True)
+        
+        self.reset_btn = tk.Button(self.button_frame, text="重置", command=self.reset_timer,
+                                bg='#E74C3C', fg='white', font=('微软雅黑', 9))
+        self.reset_btn.pack(side='left', padx=5, fill='x', expand=True)
+        
+    def setup_drag(self):
+        """设置窗口拖拽功能"""
+        self.start_x = 0
+        self.start_y = 0
+
+        def start_drag(event):
+            # 检查是否点击的是分钟、秒或小时滚轮，如果是则不执行拖动
+            widget = event.widget
+            if widget in (self.hours_spinbox, self.minutes_spinbox, self.seconds_spinbox):
+                return
+            self.start_x = event.x
+            self.start_y = event.y
+
+        def drag_window(event):
+            # 检查是否点击的是分钟、秒或小时滚轮，如果是则不执行拖动
+            widget = event.widget
+            if widget in (self.hours_spinbox, self.minutes_spinbox, self.seconds_spinbox):
+                return
+            x = self.root.winfo_x() + (event.x - self.start_x)
+            y = self.root.winfo_y() + (event.y - self.start_y)
+            self.root.geometry(f"+{x}+{y}")
+
+        # 绑定拖拽事件到整个窗口
+        self.root.bind('<Button-1>', start_drag)
+        self.root.bind('<B1-Motion>', drag_window)
+        self.time_label.bind('<Button-1>', start_drag)
+        self.time_label.bind('<B1-Motion>', drag_window)
+
+        # 双击时间标签切换模式
+        self.time_label.bind('<Double-Button-1>', self.toggle_mode)
+        
+    def start_timer(self):
+        """开始计时"""
+        if not self.is_running and not self.is_paused:
+            # 获取设置的时间
+            try:
+                hours = int(self.hours_var.get() or 0)  # 加入小时
+                minutes = int(self.minutes_var.get() or 0)
+                seconds = int(self.seconds_var.get() or 0)
+                self.total_seconds = hours * 3600 + minutes * 60 + seconds  # 计算总秒数
+                self.remaining_seconds = self.total_seconds
+            except ValueError:
+                messagebox.showerror("错误", "请输入有效的数字！")
+                return
+                
+            if self.total_seconds <= 0:
+                messagebox.showerror("错误", "请设置大于0的时间！")
+                return
+        
+        if not self.is_running:
+            self.is_running = True
+            self.is_paused = False
+            self.start_btn.config(text="运行中", state='disabled')
+            self.pause_btn.config(state='normal')
+            
+            # 切换到迷你模式
+            self.switch_to_mini_mode()
+            
+            # 在新线程中运行计时器
+            self.timer_thread = threading.Thread(target=self.run_timer)
+            self.timer_thread.daemon = True
+            self.timer_thread.start()
+
+    def pause_timer(self):
+        """暂停/恢复计时"""
+        if self.is_running:
+            if self.is_paused:
+                self.is_paused = False
+                self.pause_btn.config(text="暂停")
+                self.start_btn.config(text="运行中", state='disabled')
+            else:
+                self.is_paused = True
+                self.pause_btn.config(text="继续")
+                self.start_btn.config(text="开始", state='normal')
+    
+    def reset_timer(self):
+        """重置计时器"""
+        self.is_running = False
+        self.is_paused = False
+        self.start_btn.config(text="开始", state='normal')
+        self.pause_btn.config(text="暂停", state='normal')
+        
+        # 切换回完整模式
+        self.switch_to_full_mode()
+        
+        # 重置显示
+        try:
+            minutes = int(self.minutes_var.get() or 0)
+            seconds = int(self.seconds_var.get() or 0)
+            self.update_display(minutes * 60 + seconds)
+        except ValueError:
+            self.update_display(0)
+    
+    def position_bottom_right(self):
+        """窗口位置在右下角"""
+        self.root.update_idletasks()  # 更新窗口大小
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        window_width = self.root.winfo_width()
+        window_height = self.root.winfo_height()
+        
+        # 右下角位置（考虑到任务栏高度约40px）
+        x = screen_width - window_width - 10  # 任务栏10px边距
+        y = screen_height - window_height - 50  # 任务栏50px边距
+        
+        self.root.geometry(f"+{x}+{y}")
+    # 调整窗口大小和位置以适应迷你模式
+    def switch_to_mini_mode(self):
+        """切换到迷你模式（仅显示时间标签，无其他控件，圆角窗口）"""
+        if not self.mini_mode:
+            self.mini_mode = True
+            # 隐藏设置框架和按钮框架
+            self.time_frame.pack_forget()
+            self.button_frame.pack_forget()
+            # 调整窗口大小，仅显示时间标签
+            hours = int(self.hours_var.get() or 0)
+            if hours:
+                self.root.geometry("100x40")  # 更小的窗口尺寸
+            else:
+                self.root.geometry("70x40")  # 更小的窗口尺寸
+
+            self.time_label.config(font=('Arial', 16, 'bold'), bg='#2C3E50', fg='#27AE60')
+            self.time_label.pack(expand=True, fill='both')  # 居中显示时间标签
+            self.root.overrideredirect(True)  # 移除窗口边框
+            self.root.wm_attributes("-alpha", 0.8) # 设置透明度
+            # 设置圆角窗口
+            self.set_rounded_corners(20)
+            # 设置右下角位置
+            self.root.after(10, self.position_bottom_right) 
+
+    # 调整窗口大小和位置以适应完整模式
+    def switch_to_full_mode(self):
+        """切换到完整模式（恢复所有控件，取消圆角）"""
+        if self.mini_mode:
+            self.mini_mode = False
+            # 恢复设置框架和按钮框架
+            self.time_frame.pack(fill='x', pady=2, before=self.time_label)
+            self.button_frame.pack(fill='x', pady=2)
+            # 恢复窗口大小和边框
+            self.root.geometry("200x120")
+            self.time_label.config(font=('Arial', 20, 'bold'), bg='#2C3E50', fg='#27AE60')
+            self.root.overrideredirect(False)  # 恢复窗口边框
+
+            # 取消圆角窗口
+            self.set_rounded_corners(0)
+            # 取消透明度
+            self.root.wm_attributes("-alpha", 1.0) 
+            # 完整mode时居中显示
+            self.root.after(10, self.center_window)
+
+    def set_rounded_corners(self, radius):
+        """设置窗口圆角（仅适用于 Windows 10 及以上）"""
+        hwnd = ctypes.windll.user32.GetParent(self.root.winfo_id())  # 获取窗口句柄
+        DWM_WINDOW_CORNER_PREFERENCE = 2  # 圆角偏好
+        DWMWA_WINDOW_CORNER_PREFERENCE = 33  # 圆角属性
+        preference = ctypes.c_int(DWM_WINDOW_CORNER_PREFERENCE if radius > 0 else 0)
+        ctypes.windll.dwmapi.DwmSetWindowAttribute(
+            hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ctypes.byref(preference), ctypes.sizeof(preference)
+        )
+
+    def toggle_mode(self, event=None):
+        """切换显示模式（双击时间标签触发）"""
+        if self.mini_mode:
+            self.switch_to_full_mode()
+        else:
+            self.switch_to_mini_mode()
+    
+    def run_timer(self):
+        """运行计时器主循环"""
+        while self.is_running and self.remaining_seconds > 0:
+            if not self.is_paused:
+                self.root.after(0, lambda: self.update_display(self.remaining_seconds))
+                time.sleep(1)
+                self.remaining_seconds -= 1
+            else:
+                time.sleep(0.1)  # 暂停时短暂休眠
+        
+        if self.is_running:  # 如果是正常结束（而不是被重置）
+            self.root.after(0, self.timer_finished)
+    
+    def update_display(self, seconds):
+        """更新时间显示"""
+        hours = seconds // 3600  # 计算小时
+        minutes = (seconds % 3600) // 60  # 计算分钟
+        secs = seconds % 60  # 计算秒
+        if not self.mini_mode or hours:
+            time_text = f"{hours:02d}:{minutes:02d}:{secs:02d}"  # 显示小时:分钟:秒
+        else:
+            time_text = f"{minutes:02d}:{secs:02d}"  # 显示分钟:秒
+        self.time_label.config(text=time_text)
+        
+        # 根据剩余时间改变颜色
+        if seconds <= 10:
+            self.time_label.config(fg='#E74C3C')  # 红色
+        elif seconds <= 60:
+            self.time_label.config(fg='#F39C12')  # 橙色
+        else:
+            self.time_label.config(fg='#27AE60')  # 绿色
+    
+    def timer_finished(self):
+        """计时结束处理"""
+        self.is_running = False
+        self.is_paused = False
+        self.time_label.config(text="00:00", fg='#E74C3C')
+        
+        # 切换回完整模式以显示按钮
+        self.switch_to_full_mode()
+        
+        self.start_btn.config(text="开始", state='normal')
+        self.pause_btn.config(text="暂停", state='normal')
+        
+        # 显示提醒
+        messagebox.showinfo("时间到！", "倒计时结束！")
+        
+        # 闪烁效果
+        self.flash_window()
+
+    def center_window(self):
+        """将窗口移动到屏幕中央"""
+        self.root.update_idletasks()  # 更新窗口信息
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        window_width = self.root.winfo_width()
+        window_height = self.root.winfo_height()
+        x = (screen_width // 2) - (window_width // 2)
+        y = (screen_height // 2) - (window_height // 2)
+        self.root.geometry(f"+{x}+{y}")
+
+    def flash_window(self):
+        """窗口闪烁提醒"""
+        for i in range(6):
+            if i % 2 == 0:
+                self.root.configure(bg='#E74C3C')
+                self.time_label.configure(bg='#E74C3C')
+            else:
+                self.root.configure(bg='#2C3E50')
+                self.time_label.configure(bg='#2C3E50')
+            self.root.update()
+            time.sleep(0.5)
+    
+    def update_time_from_spinbox(self):
+        """根据滚轮的值实时更新时间显示"""
+        try:
+            hours = int(self.hours_var.get() or 0)  # 加入小时
+            minutes = int(self.minutes_var.get() or 0)
+            seconds = int(self.seconds_var.get() or 0)
+            total_seconds = hours * 3600 + minutes * 60 + seconds  # 计算总秒数
+            self.update_display(total_seconds)
+        except ValueError:
+            pass  # 如果输入无效，忽略更新
+    
+    def run(self):
+        """启动程序"""
+        self.root.mainloop()
+
+if __name__ == "__main__":
+    timer = DesktopTimer()
+    timer.run()
