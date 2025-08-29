@@ -57,20 +57,32 @@ class DesktopTimer:
         # 小时滚轮
         tk.Label(self.time_frame, text="时:", bg='#2C3E50', fg='white', font=('Arial', 8)).pack(side='left')
         self.hours_var = tk.StringVar(value="0")
-        self.hours_spinbox = ttk.Spinbox(self.time_frame, from_=0, to=23, textvariable=self.hours_var, width=3, font=('Arial', 8), wrap=True, command=self.update_time_from_spinbox)
+        vcmd_hours = (self.root.register(self.validate_hours), '%P')
+        self.hours_spinbox = ttk.Spinbox(self.time_frame, from_=0, to=23, textvariable=self.hours_var, 
+                                         width=3, font=('Arial', 8), wrap=True, command=self.update_time_from_spinbox,
+                                         validate='key', validatecommand=vcmd_hours)
         self.hours_spinbox.pack(side='left', padx=1, fill='x', expand=True)
+        self.hours_var.trace('w', lambda *args: self.update_time_from_spinbox())
         
         # 分钟滚轮
         tk.Label(self.time_frame, text="分:", bg='#2C3E50', fg='white', font=('Arial', 8)).pack(side='left', padx=(5, 0))
         self.minutes_var = tk.StringVar(value="5")
-        self.minutes_spinbox = ttk.Spinbox(self.time_frame, from_=0, to=59, textvariable=self.minutes_var, width=3, font=('Arial', 8), wrap=True, command=self.update_time_from_spinbox)
+        vcmd_minutes = (self.root.register(self.validate_minutes_seconds), '%P')
+        self.minutes_spinbox = ttk.Spinbox(self.time_frame, from_=0, to=59, textvariable=self.minutes_var, 
+                                           width=3, font=('Arial', 8), wrap=True, command=self.update_time_from_spinbox,
+                                           validate='key', validatecommand=vcmd_minutes)
         self.minutes_spinbox.pack(side='left', padx=1, fill='x', expand=True)
+        self.minutes_var.trace('w', lambda *args: self.update_time_from_spinbox())
         
         # 秒钟滚轮
         tk.Label(self.time_frame, text="秒:", bg='#2C3E50', fg='white', font=('Arial', 8)).pack(side='left', padx=(4, 0))
         self.seconds_var = tk.StringVar(value="0")
-        self.seconds_spinbox = ttk.Spinbox(self.time_frame, from_=0, to=59, textvariable=self.seconds_var, width=3, font=('Arial', 8), wrap=True, command=self.update_time_from_spinbox)  
+        vcmd_seconds = (self.root.register(self.validate_minutes_seconds), '%P')
+        self.seconds_spinbox = ttk.Spinbox(self.time_frame, from_=0, to=59, textvariable=self.seconds_var, 
+                                           width=3, font=('Arial', 8), wrap=True, command=self.update_time_from_spinbox,
+                                           validate='key', validatecommand=vcmd_seconds)  
         self.seconds_spinbox.pack(side='left', padx=1, fill='x', expand=True)
+        self.seconds_var.trace('w', lambda *args: self.update_time_from_spinbox())
         
         # 显示时间标签
         self.time_label = tk.Label(main_frame, text="00:05:00", 
@@ -125,6 +137,26 @@ class DesktopTimer:
 
         # 双击时间标签切换模式
         self.time_label.bind('<Double-Button-1>', self.toggle_mode)
+        
+    def validate_hours(self, value):
+        """验证小时输入"""
+        if value == "":
+            return True
+        try:
+            val = int(value)
+            return 0 <= val <= 23
+        except ValueError:
+            return False
+
+    def validate_minutes_seconds(self, value):
+        """验证分钟和秒钟输入"""
+        if value == "":
+            return True
+        try:
+            val = int(value)
+            return 0 <= val <= 59
+        except ValueError:
+            return False
         
     def start_timer(self):
         """开始计时"""
