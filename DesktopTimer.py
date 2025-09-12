@@ -1,10 +1,17 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import time
-from datetime import datetime, timedelta
 import threading
 import ctypes  # 用于调用 Windows API
+import pystray
+from PIL import Image, ImageDraw
+import sys, os
 
+def resource_path(relative_path):
+    """获取打包后资源的正确路径"""
+    if hasattr(sys, '_MEIPASS'):  # 如果是 PyInstaller 打包后的临时目录
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 class DesktopTimer:
     def __init__(self):
         self.root = tk.Tk()
@@ -12,7 +19,7 @@ class DesktopTimer:
         self.setup_variables()
         self.setup_ui()
         self.setup_drag()
-        
+        self.setup_tray()
         # Center the window on startup
         self.center_window()
         
@@ -26,13 +33,14 @@ class DesktopTimer:
         self.root.geometry("200x120")
         self.root.attributes("-topmost", True)  # 保持在最顶层
         self.root.resizable(False, False)
-        
+        self.root.protocol("WM_DELETE_WINDOW", self.hide_to_tray)
+
         # 设置窗口背景色
         self.root.configure(bg='#2C3E50')
 
         # 设置窗口图标（仅在 Windows 上生效）
         try:
-            self.root.iconbitmap('icon.ico')  # 使用同目录下的 icon.ico
+            self.root.iconbitmap(resource_path('favicon.ico'))  # 使用同目录下的 icon.ico
         except Exception as e:
             print(f"图标加载失败: {e}")
         
@@ -107,6 +115,41 @@ class DesktopTimer:
                                 bg='#E74C3C', fg='white', font=('微软雅黑', 9))
         self.reset_btn.pack(side='left', padx=5, fill='x', expand=True)
         
+    def show_window(self, icon=None, item=None):
+        """显示主窗口"""
+        print("显示主窗口")
+        self.root.after(0, self._show_window_impl)
+        
+    def _show_window_impl(self):
+        """显示窗口的实际实现"""
+        try:
+            self.switch_to_full_mode()
+            self.root.deiconify()  # 显示窗口
+            self.root.lift()       # 提升窗口
+            self.root.focus_force() # 强制获取焦点
+            self.is_hidden = False
+            print("窗口已显示")
+        except Exception as e:
+            print(f"显示窗口时出错: {e}")
+        
+    def tray_start_timer(self, icon=None, item=None):
+        """从托盘开始计时"""
+        self.root.after(0, self.start_timer)
+        
+    def tray_reset_timer(self, icon=None, item=None):
+        """从托盘重置计时"""
+        self.root.after(0, self.reset_timer)
+        
+
+    def quit_app(self, icon=None, item=None):
+        """退出应用程序"""
+        print("退出应用程序")
+        self.is_running = False
+        if self.tray_icon:
+            self.tray_icon.stop()
+        self.root.quit()
+
+
     def setup_drag(self):
         """设置窗口拖拽功能"""
         self.start_x = 0
@@ -377,9 +420,49 @@ class DesktopTimer:
             self.update_display(total_seconds)
         except ValueError:
             pass  # 如果输入无效，忽略更新
-    
+
+    def setup_tray(self):
+        """设置系统托盘"""
+        try:
+            
+            # 创建托盘菜单
+            menu = pystray.Menu(
+                pystray.MenuItem("显示主窗口", self.show_window, default=True),
+                pystray.MenuItem("开始计时", self.tray_start_timer),
+                pystray.MenuItem("重置计时", self.tray_reset_timer),
+                pystray.Menu.SEPARATOR,
+                pystray.MenuItem("退出", self.quit_app)
+            )
+            
+            # 创建托盘图标对象
+            self.tray_icon = pystray.Icon("DesktopTimer", Image.open(resource_path('favicon.ico')), "桌面计时器", menu)
+            
+        except Exception as e:
+            print(f"创建托盘时出错: {e}")
+            self.tray_icon = None
+        
+    def hide_to_tray(self):
+        """隐藏窗口到系统托盘"""
+        self.root.withdraw()  # 隐藏窗口
+        self.is_hidden = True
+
+    def run_tray(self):
+        """运行系统托盘"""
+        if self.tray_icon:
+            try:
+                print("开始运行托盘图标")
+                self.tray_icon.run()
+            except Exception as e:
+                print(f"运行托盘图标时出错: {e}")
+
     def run(self):
         """启动程序"""
+        if not hasattr(self, 'tray_running') or not self.tray_running:
+            # 在新线程中启动托盘图标
+            self.tray_running = True
+            tray_thread = threading.Thread(target=self.run_tray, daemon=True)
+            tray_thread.start()
+
         self.root.mainloop()
 
 if __name__ == "__main__":
