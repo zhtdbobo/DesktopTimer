@@ -4,7 +4,7 @@ import time
 import threading
 import ctypes  # 用于调用 Windows API
 import pystray
-from PIL import Image, ImageDraw
+from PIL import Image
 import sys, os
 
 def resource_path(relative_path):
