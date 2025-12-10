@@ -14,7 +14,8 @@
 - 适用于Windows系统的桌面时间管理工具
 
 ## 界面
-<img width="202" height="152" alt="image" src="https://github.com/user-attachments/assets/67d1cb83-02eb-4add-842f-451a97838386" />
+<img width="302" height="228" alt="image" src="https://github.com/user-attachments/assets/a6f59f2f-8087-40ab-b5f5-9f4ad70d7de9" />
+
 
 <img width="70" height="40" alt="image" src="https://github.com/user-attachments/assets/abb93fac-aefe-4cf2-9ce9-090a8c4c4a51" />
 
