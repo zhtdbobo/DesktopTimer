@@ -20,5 +20,5 @@
 
 ## 打包
 ```bash
-pyinstaller -F -w -i favicon.ico --add-data "favicon.ico;." -n "DesktopTimer" DesktopTimer.py
+pyinstaller DesktopTimer.spec
 ```
