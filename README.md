@@ -10,13 +10,13 @@
 - 运行时自动切换到迷你模式，显示在屏幕右下角
 - 倒计时结束时弹窗提醒并伴有闪烁效果
 - 支持开始、暂停、继续和重置功能
-- 时间不足时会变色提醒（绿色→橙色→红色）
+- 时间不足时会变色提醒
 - 适用于Windows系统的桌面时间管理工具
 
 ## 界面
-<img width="302" height="228" alt="PixPin_2025-08-28_11-55-37" src="https://github.com/user-attachments/assets/9a96f78c-90ba-44c8-839a-66857581bfe6" />
+<img width="202" height="152" alt="image" src="https://github.com/user-attachments/assets/67d1cb83-02eb-4add-842f-451a97838386" />
 
-<img width="105" height="60" alt="PixPin_2025-08-28_11-54-05" src="https://github.com/user-attachments/assets/5b5b35e6-4e09-40cc-ab54-93889e312222" />
+<img width="70" height="40" alt="image" src="https://github.com/user-attachments/assets/abb93fac-aefe-4cf2-9ce9-090a8c4c4a51" />
 
 ## 打包
 ```bash
