@@ -35,7 +35,7 @@ class DesktopTimer:
         self.root.geometry("200x120")
         self.root.attributes("-topmost", True)  # 保持在最顶层
         self.root.resizable(False, False)
-        self.root.protocol("WM_DELETE_WINDOW", self.hide_to_tray)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close_window)
 
         # 设置窗口图标（仅在 Windows 上生效）
         try:
@@ -92,7 +92,7 @@ class DesktopTimer:
         self.seconds_var.trace('w', lambda *args: self.update_time_from_spinbox())
         
         # 显示时间标签
-        self.time_label = ttk.Label(main_frame, text="00:05:00", 
+        self.time_label = ttk.Label(main_frame, text="05:00", 
                                 font=('Arial', 20, 'bold'), 
                                 foreground='#27AE60',
                                 anchor='center')
@@ -284,14 +284,16 @@ class DesktopTimer:
             # 隐藏设置框架和按钮框架
             self.time_frame.pack_forget()
             self.button_frame.pack_forget()
-            # 调整窗口大小，仅显示时间标签
+            # 调整窗口大小，根据是否显示小时来决定
             hours = int(self.hours_var.get() or 0)
             if hours:
-                self.root.geometry("100x40")  # 更小的窗口尺寸
+                self.root.geometry("100x40")  # 显示小时时的窗口尺寸
             else:
-                self.root.geometry("70x40")  # 更小的窗口尺寸
+                self.root.geometry("70x40")  # 不显示小时时的窗口尺寸
 
             self.time_label.config(font=('Arial', 16, 'bold'), foreground='#27AE60')
+            # 先更新一次显示，避免切换时出现闪烁
+            self.root.update_idletasks()
             self.time_label.pack(expand=True, fill='both')  # 居中显示时间标签
             self.root.overrideredirect(True)  # 移除窗口边框
             self.root.wm_attributes("-alpha", 0.8) # 设置透明度
@@ -355,10 +357,11 @@ class DesktopTimer:
         hours = seconds // 3600  # 计算小时
         minutes = (seconds % 3600) // 60  # 计算分钟
         secs = seconds % 60  # 计算秒
-        if not self.mini_mode or hours:
+        # 小时为0时不显示小时（主界面和迷你模式保持一致）
+        if hours:
             time_text = f"{hours:02d}:{minutes:02d}:{secs:02d}"  # 显示小时:分钟:秒
         else:
-            time_text = f"{minutes:02d}:{secs:02d}"  # 显示分钟:秒
+            time_text = f"{minutes:02d}:{secs:02d}"  # 小时为0时不显示小时
         self.time_label.config(text=time_text)
         
         # 根据剩余时间改变颜色
@@ -443,6 +446,10 @@ class DesktopTimer:
         """隐藏窗口到系统托盘"""
         self.root.withdraw()  # 隐藏窗口
         self.is_hidden = True
+
+    def on_close_window(self):
+        """处理点击 X 按钮的事件，变成迷你模式"""
+        self.switch_to_mini_mode()
 
     def run_tray(self):
         """运行系统托盘"""
