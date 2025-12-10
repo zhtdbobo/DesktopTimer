@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+from ttkthemes import ThemedTk
 import time
 import threading
 import ctypes  # 用于调用 Windows API
@@ -14,7 +15,8 @@ def resource_path(relative_path):
     return os.path.join(os.path.abspath("."), relative_path)
 class DesktopTimer:
     def __init__(self):
-        self.root = tk.Tk()
+        # 使用ThemedTk替代Tk，并应用arc主题
+        self.root = ThemedTk(theme="arc")
         self.setup_window()
         self.setup_variables()
         self.setup_ui()
@@ -35,9 +37,6 @@ class DesktopTimer:
         self.root.resizable(False, False)
         self.root.protocol("WM_DELETE_WINDOW", self.hide_to_tray)
 
-        # 设置窗口背景色
-        self.root.configure(bg='#2C3E50')
-
         # 设置窗口图标（仅在 Windows 上生效）
         try:
             self.root.iconbitmap(resource_path('favicon.ico'))  # 使用同目录下的 icon.ico
@@ -55,15 +54,15 @@ class DesktopTimer:
     def setup_ui(self):
         """设置用户界面"""
         # 主框架
-        main_frame = tk.Frame(self.root, bg='#2C3E50')
+        main_frame = ttk.Frame(self.root)
         main_frame.pack(fill='both', expand=True, padx=5, pady=5)
         
         # 时间设置框架
-        self.time_frame = tk.Frame(main_frame, bg='#2C3E50')
+        self.time_frame = ttk.Frame(main_frame)
         self.time_frame.pack(fill='x', pady=2)
         
         # 小时滚轮
-        tk.Label(self.time_frame, text="时:", bg='#2C3E50', fg='white', font=('Arial', 8)).pack(side='left')
+        ttk.Label(self.time_frame, text="时:", font=('Arial', 8)).pack(side='left')
         self.hours_var = tk.StringVar(value="0")
         vcmd_hours = (self.root.register(self.validate_hours), '%P')
         self.hours_spinbox = ttk.Spinbox(self.time_frame, from_=0, to=23, textvariable=self.hours_var, 
@@ -73,7 +72,7 @@ class DesktopTimer:
         self.hours_var.trace('w', lambda *args: self.update_time_from_spinbox())
         
         # 分钟滚轮
-        tk.Label(self.time_frame, text="分:", bg='#2C3E50', fg='white', font=('Arial', 8)).pack(side='left', padx=(5, 0))
+        ttk.Label(self.time_frame, text="分:", font=('Arial', 8)).pack(side='left', padx=(5, 0))
         self.minutes_var = tk.StringVar(value="5")
         vcmd_minutes = (self.root.register(self.validate_minutes_seconds), '%P')
         self.minutes_spinbox = ttk.Spinbox(self.time_frame, from_=0, to=59, textvariable=self.minutes_var, 
@@ -83,7 +82,7 @@ class DesktopTimer:
         self.minutes_var.trace('w', lambda *args: self.update_time_from_spinbox())
         
         # 秒钟滚轮
-        tk.Label(self.time_frame, text="秒:", bg='#2C3E50', fg='white', font=('Arial', 8)).pack(side='left', padx=(4, 0))
+        ttk.Label(self.time_frame, text="秒:", font=('Arial', 8)).pack(side='left', padx=(4, 0))
         self.seconds_var = tk.StringVar(value="0")
         vcmd_seconds = (self.root.register(self.validate_minutes_seconds), '%P')
         self.seconds_spinbox = ttk.Spinbox(self.time_frame, from_=0, to=59, textvariable=self.seconds_var, 
@@ -93,26 +92,26 @@ class DesktopTimer:
         self.seconds_var.trace('w', lambda *args: self.update_time_from_spinbox())
         
         # 显示时间标签
-        self.time_label = tk.Label(main_frame, text="00:05:00", 
+        self.time_label = ttk.Label(main_frame, text="00:05:00", 
                                 font=('Arial', 20, 'bold'), 
-                                bg='#2C3E50', fg='#27AE60')
-        self.time_label.pack(pady=5, fill='x', expand=True)
+                                foreground='#27AE60',
+                                anchor='center')
+        self.time_label.pack(pady=5, fill='both', expand=True)
         
         # 按钮框架
-        self.button_frame = tk.Frame(main_frame, bg='#2C3E50')
+        self.button_frame = ttk.Frame(main_frame)
         self.button_frame.pack(fill='x', pady=2)
         
-        # 控制按钮
-        self.start_btn = tk.Button(self.button_frame, text="开始", command=self.start_timer,
-                                bg='#27AE60', fg='white', font=('微软雅黑', 9))
+        # 控制按钮 - 使用ttk.Button以支持主题
+        self.start_btn = ttk.Button(self.button_frame, text="开始", width=3, command=self.start_timer,
+                                style='Accent.TButton')
         self.start_btn.pack(side='left', padx=5, fill='x', expand=True)
         
-        self.pause_btn = tk.Button(self.button_frame, text="暂停", command=self.pause_timer,
-                                bg='#F39C12', fg='white', font=('微软雅黑', 9))
+        self.pause_btn = ttk.Button(self.button_frame, text="暂停", width=3, command=self.pause_timer)
         self.pause_btn.pack(side='left', padx=5, fill='x', expand=True)
         
-        self.reset_btn = tk.Button(self.button_frame, text="重置", command=self.reset_timer,
-                                bg='#E74C3C', fg='white', font=('微软雅黑', 9))
+        self.reset_btn = ttk.Button(self.button_frame, text="重置", width=3, command=self.reset_timer,
+                                style='Danger.TButton')
         self.reset_btn.pack(side='left', padx=5, fill='x', expand=True)
         
     def show_window(self, icon=None, item=None):
@@ -257,9 +256,10 @@ class DesktopTimer:
         
         # 重置显示
         try:
+            hours = int(self.hours_var.get() or 0)
             minutes = int(self.minutes_var.get() or 0)
             seconds = int(self.seconds_var.get() or 0)
-            self.update_display(minutes * 60 + seconds)
+            self.update_display(hours * 60 * 60 + minutes * 60 + seconds)
         except ValueError:
             self.update_display(0)
     
@@ -291,7 +291,7 @@ class DesktopTimer:
             else:
                 self.root.geometry("70x40")  # 更小的窗口尺寸
 
-            self.time_label.config(font=('Arial', 16, 'bold'), bg='#2C3E50', fg='#27AE60')
+            self.time_label.config(font=('Arial', 16, 'bold'), foreground='#27AE60')
             self.time_label.pack(expand=True, fill='both')  # 居中显示时间标签
             self.root.overrideredirect(True)  # 移除窗口边框
             self.root.wm_attributes("-alpha", 0.8) # 设置透明度
@@ -310,7 +310,7 @@ class DesktopTimer:
             self.button_frame.pack(fill='x', pady=2)
             # 恢复窗口大小和边框
             self.root.geometry("200x120")
-            self.time_label.config(font=('Arial', 20, 'bold'), bg='#2C3E50', fg='#27AE60')
+            self.time_label.config(font=('Arial', 20, 'bold'), foreground='#27AE60')
             self.root.overrideredirect(False)  # 恢复窗口边框
 
             # 取消圆角窗口
@@ -363,17 +363,17 @@ class DesktopTimer:
         
         # 根据剩余时间改变颜色
         if seconds <= 10:
-            self.time_label.config(fg='#E74C3C')  # 红色
+            self.time_label.config(foreground='#E74C3C')  # 红色
         elif seconds <= 60:
-            self.time_label.config(fg='#F39C12')  # 橙色
+            self.time_label.config(foreground='#F39C12')  # 橙色
         else:
-            self.time_label.config(fg='#27AE60')  # 绿色
+            self.time_label.config(foreground='#27AE60')  # 绿色
     
     def timer_finished(self):
         """计时结束处理"""
         self.is_running = False
         self.is_paused = False
-        self.time_label.config(text="00:00", fg='#E74C3C')
+        self.time_label.config(text="00:00", foreground='#E74C3C')
         
         # 切换回完整模式以显示按钮
         self.switch_to_full_mode()
@@ -402,11 +402,9 @@ class DesktopTimer:
         """窗口闪烁提醒"""
         for i in range(6):
             if i % 2 == 0:
-                self.root.configure(bg='#E74C3C')
-                self.time_label.configure(bg='#E74C3C')
+                self.time_label.configure(foreground='#E74C3C')  # 闪烁时改变文字颜色
             else:
-                self.root.configure(bg='#2C3E50')
-                self.time_label.configure(bg='#2C3E50')
+                self.time_label.configure(foreground='#27AE60')  # 恢复正常颜色
             self.root.update()
             time.sleep(0.5)
     
