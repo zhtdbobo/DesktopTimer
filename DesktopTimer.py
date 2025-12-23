@@ -371,6 +371,15 @@ class DesktopTimer:
             self.time_label.config(foreground='#F39C12')  # 橙色
         else:
             self.time_label.config(foreground='#27AE60')  # 绿色
+
+        if self.mini_mode:
+            # 当处于迷你模式且显示格式从有小时/无小时切换时，调整宽度并保持右下角对齐
+            desired_width = 100 if hours else 70
+            current_width = self.root.winfo_width()
+            if current_width != desired_width:
+                # 改变尺寸后延迟重新定位，确保窗口大小已生效
+                self.root.geometry(f"{desired_width}x40")
+                self.root.after(10, self.position_bottom_right)
     
     def timer_finished(self):
         """计时结束处理"""
